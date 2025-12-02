@@ -1,0 +1,78 @@
+# ---------- Summarization prompt helpers ----------
+def make_summary_prompt(query: str, docs_text: List[str], max_chars=20000) -> str:
+    """
+    Builds a user prompt to ask LLM to summarize the retrieved documents relative to the query.
+    Truncates docs_text if necessary.
+    """
+    joined = "\n\n---\n\n".join(docs_text)
+    # clip if too long (simple char-based)
+    if len(joined) > max_chars:
+        joined = joined[:max_chars]
+    prompt = (
+        "You are a helpful assistant that summarizes retrieved government document (schmes or acts) text.\n\n"
+        f"User query: {query}\n\n"
+        "Below are retrieved document chunks. Produce a concise structured summary (3-6 bullet points) "
+        "that focuses only on the most relevant facts, sections, rules, and citations needed to answer the query.\n\n"
+        "Return the summary in plain text. If a fact is uncertain or not present in the retrieved text, say so.\n\n"
+        "Documents:\n\n"
+        f"{joined}\n\n"
+        "Summary:"
+    )
+    return prompt
+ 
+def make_answer_prompt(query: str, summary: str, top_snippets: List[str]) -> str:
+    """
+    Builds the final prompt for the LLM to answer the user's query using the summary and a few snippets.
+    """
+    joined_snips = "\n\n---\n\n".join(top_snippets)
+    prompt = (
+        "You are an expert assistant for Indian government documents (Acts, Schemes, Rules) and helps users in answering queries about Indian government schemes and acts.\n\n"
+        "Use the provided summary and document snippets to answer the user query. If the answer is not fully supported by the provided material, be explicit about uncertainty and say what else you'd need.\n\n"
+        "The answer should not exceed 150 words unless user explicitly mentioned.\n"
+        f"Query: {query}\n\n"
+        "Retrieved Summary:\n"
+        f"{summary}\n\n"
+        "Document Snippets (for reference):\n"
+        f"{joined_snips}\n\n"
+        "Answer concisely and cite snippet indices if useful.\n\nAnswer:"
+    )
+    return prompt
+ 
+def make_advisor_prompt(query: str, summary: str, top_snippets: List[str]) -> str:
+    """
+    Builds the final prompt for the LLM to provide legal + practical advice
+    based on Indian government schemes or acts, using retrieved documents.
+    """
+    joined_snips = "\n\n---\n\n".join(top_snippets)
+ 
+    prompt = (
+        "You are an expert Government Advisor specializing in Indian Government Schemes, "
+        "and Acts/Rules. You help citizens understand what benefits, options, or obligations apply to their situation.\n\n"
+ 
+        "Follow these rules:\n"
+        "- Use ONLY the information found in the retrieved summary and document snippets.\n"
+        "- For ACTS: explain applicable sections, rights, duties, compliance requirements, "
+        "penalties, procedural steps, and legal protections strictly from the snippets.\n"
+        "- For SCHEMES: explain eligibility, benefits, subsidy rates, financial assistance, "
+        "application steps, and relevant conditions.\n"
+        "- Give practical advice: where to apply, which department handles it, documents needed.\n"
+        "- If ANY detail is missing, say clearly: 'Not available in the retrieved documents'. "
+        "Do NOT guess or hallucinate.\n"
+        "- Your advice should be factual, concise, and under 150 words unless the user asks otherwise.\n\n"
+ 
+        "You are NOT a lawyer. Do NOT interpret the law beyond what is explicitly provided. "
+        "Do NOT provide speculative legal advice.\n\n"
+ 
+        f"User Case/Situation: {query}\n\n"
+ 
+        "Retrieved Summary:\n"
+        f"{summary}\n\n"
+ 
+        "Document Snippets (evidence):\n"
+        f"{joined_snips}\n\n"
+ 
+        "Provide clear, actionable advice. Cite snippet indices (e.g., [S1], [S2]) when relevant.\n\n"
+        "Advisor Response:"
+    )
+ 
+    return prompt
